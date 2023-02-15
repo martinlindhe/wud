@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -136,22 +137,12 @@ func openFile(name string) (wud.ReadCloser, error) {
 	return wud.OpenReader(name)
 }
 
-func extract(name, common, game, directory string) error {
+func extract(name string, commonKey, gameKey []byte, directory string) error {
 	rc, err := openFile(name)
 	if err != nil {
 		return err
 	}
 	defer rc.Close()
-
-	commonKey, err := afero.ReadFile(fs, common)
-	if err != nil {
-		return err
-	}
-
-	gameKey, err := afero.ReadFile(fs, game)
-	if err != nil {
-		return err
-	}
 
 	w, err := wud.NewWUD(rc, commonKey, gameKey)
 	if err != nil {
@@ -237,17 +228,17 @@ func main() {
 
 				file := c.Args().Get(0)
 
-				common := c.Args().Get(1)
-				if common == "" {
-					common = filepath.Join(filepath.Dir(file), wud.CommonKeyFile)
+				commonKey, err := hex.DecodeString(c.Args().Get(1))
+				if err != nil {
+					return err
 				}
 
-				game := c.Args().Get(2)
-				if game == "" {
-					game = filepath.Join(filepath.Dir(common), wud.GameKeyFile)
+				gameKey, err := hex.DecodeString(c.Args().Get(2))
+				if err != nil {
+					return err
 				}
 
-				if err := extract(file, common, game, c.Path("directory")); err != nil {
+				if err := extract(file, commonKey, gameKey, c.Path("directory")); err != nil {
 					return err
 				}
 
